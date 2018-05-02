@@ -2,7 +2,6 @@
 #define F_CPU 16000000UL // 16 MHz clock speed
 #endif
 
-
 typedef unsigned char byte;
 
 #define BAUDRATE 9600
@@ -15,21 +14,50 @@ typedef unsigned char byte;
 void wait(unsigned);
 void init_USART();
 void USART_send(byte data);
-unsigned char USART_receive();
+char USART_receive();
 void USART_sendString(char st[]);
+unsigned char get_frequency();
 
 int main() {
 
 	DDRB=(1 << PB7);
 	init_USART();
 	
-	unsigned int hertz = (10/(unsigned int)USART_receive());
+	unsigned int hertz = (10/(unsigned int)get_frequency());
 	
 	while(1) {
 		PORTB ^=(1 << PB7);
 		//USART_sendString("test");
 		wait(hertz);
 	}
+}
+
+unsigned char get_frequency()
+{
+	unsigned char temp;
+	char receive;
+	
+	receive = USART_receive();
+	
+	switch(receive)
+	{
+		case '1':
+			temp = '1';
+			USART_sendString("Gekozen voor 1");
+			break;
+		case '2':
+			temp = '2';
+			USART_sendString("Gekozen voor 2");
+			break;
+		case '3':
+			temp = '10';
+			USART_sendString("Gekozen voor 10");
+			break;
+		default:
+			USART_sendString("Onbekende input");
+			temp = '0';
+	}
+	return temp;
 }
 
 void wait(unsigned a) {
@@ -61,26 +89,8 @@ void USART_sendString(char st[])
 	}
 }
 
-unsigned char USART_receive()
+char USART_receive()
 {
 	while (! (UCSR0A & (1<<RXC0)));
-	unsigned char temp;
-	char debug[30];
-	switch(UDR0)
-	{
-		case 1: 
-			temp = '1'; 
-			strcpy(debug, "Gekozen voor 1"); 
-			break;
-		case 2: 
-			temp = '2'; 
-			strcpy(debug, "Gekozen voor 2"); 
-			break;
-		case 3: 
-			temp = '10'; 
-			strcpy(debug, "Gekozen voor 10"); 
-			break; 
-	} 
-	USART_sendString(debug);	
-	return temp;
+	return UDR0;
 }
