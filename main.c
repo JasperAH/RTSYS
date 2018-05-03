@@ -8,31 +8,56 @@ typedef unsigned char byte;
 #define BAUD_PRESCALER (((F_CPU / (BAUDRATE * 16UL))) - 1)
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <util/delay.h>
 #include <string.h>
+#include <stdlib.h>
 
 void wait(unsigned);
-void init_USART();
+void init_USART(void);
 void USART_send(byte data);
-char USART_receive();
+char USART_receive(void);
 void USART_sendString(char st[]);
-unsigned char get_frequency();
+unsigned char get_frequency(void);
+void ping_getDistance(void);
+void ping_listen(void);
+void ping_setTimer(void);
 
-int main() {
+volatile uint16_t timerValue;
+uint16_t result = 0;
 
-	DDRB=(1 << PB7);
+int main(void) {
+	cli();
+	ping_setTimer();
+	//DDRB=(1 << PB7);
+	DDRA=(1<<PA7); //PA7 (29)
 	init_USART();
+	sei();
+	while(1){
+		ping_getDistance();
+		if(result != 0){
+			USART_sendString("Distance: ");
+			char buf[8];
+			itoa(result, buf, 10);
+			USART_sendString(buf);
+			USART_send('\n');
+			result = 0;
+		}
+	}
+	//unsigned int hertz = (10/(get_frequency()-'0'));
 	
-	unsigned int hertz = (10/(get_frequency()-'0'));
-	
+	/*
 	while(1) {
 		PORTB ^=(1 << PB7);
 		//USART_sendString("test");
 		wait(hertz);
 	}
+	*/
+	
+	
 }
 
-unsigned char get_frequency()
+unsigned char get_frequency(void)
 {
 	unsigned char temp;
 	char receive;
@@ -65,7 +90,7 @@ void wait(unsigned a) {
 	_delay_ms(50);
 }
 
-void init_USART()
+void init_USART(void)
 {
 	UBRR0 = BAUD_PRESCALER;
 	
@@ -89,8 +114,37 @@ void USART_sendString(char st[])
 	}
 }
 
-char USART_receive()
+char USART_receive(void)
 {
 	while (! (UCSR0A & (1<<RXC0)));
 	return UDR0;
+}
+
+void ping_getDistance(void)
+{
+	//PB0 (53) PB2 (51)
+	DDRB |= (1<<PB0);
+	PORTB &= ~(1<<PB0);
+	_delay_us(2);
+	PORTB |= (1<<PB0);
+	_delay_us(5);
+	PORTB &= ~(1<<PB0);
+	DDRB &= ~(1<<PB2);
+	ping_listen();
+}
+
+void ping_listen(void)
+{
+		TCNT1 = 0;
+		while(~PINB & 1<<PB2);
+		//if(TCNT1 > 500000) break;
+		TCNT1 = 0;								//Reset timer naar 0
+		while(PINB & 1<<PB2);
+		//if(TCNT1 > 500000) break;
+		timerValue = TCNT1;						//Neem TCNT1 waarde over en stop deze in INT waarde TimerValue
+		result = (timerValue /2 /29 /2);
+}
+
+void ping_setTimer(void){
+	TCCR1B |= (1<<CS11);					//prescaler is set 8
 }
