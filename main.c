@@ -23,7 +23,7 @@ int main() {
 	DDRB=(1 << PB7);
 	init_USART();
 	
-	unsigned int hertz = (10/(unsigned int)get_frequency());
+	unsigned int hertz = (10/(get_frequency()-'0'));
 	
 	while(1) {
 		PORTB ^=(1 << PB7);
@@ -50,7 +50,7 @@ unsigned char get_frequency()
 			USART_sendString("Gekozen voor 2");
 			break;
 		case '3':
-			temp = '10';
+			temp = ':'; //getal 10
 			USART_sendString("Gekozen voor 10");
 			break;
 		default:
