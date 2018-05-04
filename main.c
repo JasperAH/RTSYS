@@ -13,27 +13,18 @@ typedef unsigned char byte;
 #include <string.h>
 #include <stdlib.h>
 
-void wait(unsigned);
-void init_USART(void);
-void USART_send(byte data);
-char USART_receive(void);
-void USART_sendString(char st[]);
-unsigned char get_frequency(void);
-void ping_getDistance(void);
-void ping_listen(void);
-void ping_setTimer(void);
-
-volatile uint16_t timerValue;
-uint16_t result = 0;
+#include "main.h"
 
 int main(void) {
 	cli();
 	ping_setTimer();
 	//DDRB=(1 << PB7);
-	DDRA=(1<<PA7); //PA7 (29)
+	DDRB=(1<<PB5); //PA7 (29)
 	init_USART();
 	sei();
 	while(1){
+		test_Servo();
+		/*
 		ping_getDistance();
 		if(result != 0){
 			USART_sendString("Distance: ");
@@ -41,8 +32,9 @@ int main(void) {
 			itoa(result, buf, 10);
 			USART_sendString(buf);
 			USART_send('\n');
+			_delay_ms(500);
 			result = 0;
-		}
+		}*/
 	}
 	//unsigned int hertz = (10/(get_frequency()-'0'));
 	
@@ -147,4 +139,20 @@ void ping_listen(void)
 
 void ping_setTimer(void){
 	TCCR1B |= (1<<CS11);					//prescaler is set 8
+}
+
+void test_Servo(void)
+{
+	TCCR1A |= (1 << WGM11) | (1 << COM1A1);
+	TCCR1B |= (1 << WGM12) | (1 << WGM13) | (1 << CS11);	
+	ICR1 = 24999;		
+	while(1){
+		OCR1A = 4900;
+
+		_delay_ms(2000);
+
+		OCR1A = 1500;
+
+		_delay_ms(2000);
+	}
 }
