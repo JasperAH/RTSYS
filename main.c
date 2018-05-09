@@ -15,15 +15,23 @@ typedef unsigned char byte;
 
 #include "main.h"
 
+uint16_t msCounter = 0;
+uint8_t ppmPosition = 0; // -90 bij 9, 0 bij 15, 90 bij 21
+
+
 int main(void) {
 	cli();
 	ping_setTimer();
 	//DDRB=(1 << PB7);
-	DDRB=(1<<PB5); //PA7 (29)
+	DDRA=(1<<PA7); //PA7 (29)
 	init_USART();
+	initServo();
 	sei();
 	while(1){
-		test_Servo();
+		wait(50);
+		ppmPosition = 9;
+		wait(50);
+		ppmPosition = 21;
 		/*
 		ping_getDistance();
 		if(result != 0){
@@ -136,23 +144,32 @@ void ping_listen(void)
 		timerValue = TCNT1;						//Neem TCNT1 waarde over en stop deze in INT waarde TimerValue
 		result = (timerValue /2 /29 /2);
 }
-
 void ping_setTimer(void){
 	TCCR1B |= (1<<CS11);					//prescaler is set 8
 }
 
-void test_Servo(void)
+void initServo(void)
 {
-	TCCR1A |= (1 << WGM11) | (1 << COM1A1);
-	TCCR1B |= (1 << WGM12) | (1 << WGM13) | (1 << CS11);	
-	ICR1 = 24999;		
-	while(1){
-		OCR1A = 4900;
+	TCCR3A |= (0 << WGM31) | (1 << COM3A1);
+	TCCR3B |= (1 << WGM32) | (0 << WGM33) | (1 << CS30);	
+	TCNT3 = 0;
+	OCR3A = 1600;		
+	TIMSK3 |= (1<<OCIE3A);
+}
 
-		_delay_ms(2000);
 
-		OCR1A = 1500;
 
-		_delay_ms(2000);
+ISR(TIMER3_COMPA_vect)
+{
+	if(msCounter < ppmPosition){
+		PORTA |= (1<<PA7);
+	} else {
+		PORTA &= ~(1<<PA7);
+	}
+	
+	if(msCounter < 200){
+		msCounter++;
+	} else {
+		msCounter = 0;
 	}
 }

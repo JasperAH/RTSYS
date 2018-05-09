@@ -21,6 +21,6 @@ unsigned char get_frequency(void);
 void ping_getDistance(void);
 void ping_listen(void);
 void ping_setTimer(void);
-void test_Servo(void);
+void initServo(void);
 
 #endif /* MAIN_H_ */
