@@ -22,5 +22,8 @@ void ping_getDistance(void);
 void ping_listen(void);
 void ping_setTimer(void);
 void initServo(void);
+char *receiveString(uint8_t len);
+void watchdog_init(void);
+void setPPMPos(uint8_t);
 
 #endif /* MAIN_H_ */

@@ -12,11 +12,12 @@ typedef unsigned char byte;
 #include <util/delay.h>
 #include <string.h>
 #include <stdlib.h>
+#include <avr/wdt.h>
 
 #include "main.h"
 
 uint16_t msCounter = 0;
-uint8_t ppmPosition = 0; // -90 bij 9, 0 bij 15, 90 bij 21
+uint8_t ppmPosition = 15; // -90 bij 6, 0 bij 15, 90 bij 25
 
 
 int main(void) {
@@ -25,14 +26,11 @@ int main(void) {
 	//DDRB=(1 << PB7);
 	DDRA=(1<<PA7); //PA7 (29)
 	init_USART();
+	watchdog_init();
 	initServo();
 	sei();
+	
 	while(1){
-		wait(50);
-		ppmPosition = 9;
-		wait(50);
-		ppmPosition = 21;
-		/*
 		ping_getDistance();
 		if(result != 0){
 			USART_sendString("Distance: ");
@@ -40,21 +38,55 @@ int main(void) {
 			itoa(result, buf, 10);
 			USART_sendString(buf);
 			USART_send('\n');
-			_delay_ms(500);
 			result = 0;
-		}*/
+		}
+		
+		char *chars = malloc(8);
+		//strcpy(chars, receiveString(8));
+		strcpy(chars, receiveString(8));
+		int angle = atoi(chars);
+		USART_sendString(chars);
+		setPPMPos(angle);
 	}
-	//unsigned int hertz = (10/(get_frequency()-'0'));
-	
 	/*
+	############### Frequency for led##########################
+	unsigned int hertz = (10/(get_frequency()-'0'));
+	
+	
 	while(1) {
 		PORTB ^=(1 << PB7);
 		//USART_sendString("test");
 		wait(hertz);
 	}
+	###########################################################
 	*/
 	
 	
+}
+
+void setPPMPos(uint8_t i){
+	if(i < 6){
+		ppmPosition = 6;
+	}else if(i > 25){
+		ppmPosition = 25;
+	}else{
+		ppmPosition = i;
+	}
+}
+
+char *receiveString(uint8_t len){
+	USART_sendString("START RECEIVE\n");
+	char *temp = malloc(len * sizeof(char));
+	char c = USART_receive();
+	uint8_t counter = 0;
+	while(c != '\r' && counter < len-1){		
+		USART_send(c);
+		temp[counter] = c;
+		counter++;
+		c = USART_receive();
+	}
+	temp[counter] = '\0';
+	return temp;
 }
 
 unsigned char get_frequency(void)
@@ -150,14 +182,21 @@ void ping_setTimer(void){
 
 void initServo(void)
 {
-	TCCR3A |= (0 << WGM31) | (1 << COM3A1);
-	TCCR3B |= (1 << WGM32) | (0 << WGM33) | (1 << CS30);	
+	TCCR3A |= (0 << WGM31) | (1 << COM3A1); //CTC Met OCR3A als TOP
+	TCCR3B |= (1 << WGM32) | (0 << WGM33) | (1 << CS30); //no prescaler
 	TCNT3 = 0;
 	OCR3A = 1600;		
 	TIMSK3 |= (1<<OCIE3A);
 }
 
-
+void watchdog_init()
+{
+	MCUSR &= ~(1<<WDRF);
+	
+	WDTCSR |= (1<<WDCE) | (1<<WDE);
+	
+	WDTCSR = (1<<WDE) | (1<<WDP2) | (1<<WDP1);
+}
 
 ISR(TIMER3_COMPA_vect)
 {
@@ -171,5 +210,6 @@ ISR(TIMER3_COMPA_vect)
 		msCounter++;
 	} else {
 		msCounter = 0;
+		wdt_reset();
 	}
 }
